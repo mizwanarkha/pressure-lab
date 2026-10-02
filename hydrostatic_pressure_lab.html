@@ -1,0 +1,914 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Hydrostatic Pressure Physics Exam Lab</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;700&display=swap');
+        body {
+            font-family: 'Inter', sans-serif;
+            user-select: none;
+            background-color: #090d16;
+            color: #f1f5f9;
+            overflow: hidden; /* Prevent scrolling on mobile */
+        }
+        .font-mono-custom {
+            font-family: 'JetBrains Mono', monospace;
+        }
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: #0f172a;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: #334155;
+            border-radius: 3px;
+        }
+        canvas {
+            touch-action: none; /* Crucial for custom touch handling */
+            outline: none;
+        }
+        .hide {
+            display: none !important;
+        }
+        input {
+            user-select: auto;
+        }
+    </style>
+</head>
+<body class="h-screen w-screen overflow-hidden flex flex-col bg-slate-950 text-slate-100">
+
+    <div id="custom-dialog" class="fixed inset-0 z-[100] bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4 hide">
+        <div class="bg-slate-900 border border-slate-700 rounded-xl shadow-2xl max-w-sm w-full p-5 flex flex-col gap-4 transform transition-all">
+            <div class="flex items-center gap-3">
+                <div id="dialog-icon" class="text-2xl text-blue-400"></div>
+                <h3 id="dialog-title" class="text-lg font-bold text-white">Notification</h3>
+            </div>
+            <p id="dialog-message" class="text-sm text-slate-300 whitespace-pre-line"></p>
+            <input type="password" id="dialog-input" class="hide w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:border-blue-500 outline-none" placeholder="Enter PIN">
+            <div class="flex justify-end gap-3 mt-2" id="dialog-buttons"></div>
+        </div>
+    </div>
+
+    <div id="start-modal" class="fixed inset-0 z-50 bg-slate-950/95 backdrop-blur-md flex items-center justify-center p-4">
+        <div class="bg-slate-900 border border-slate-800 rounded-2xl max-w-md w-full p-6 space-y-5 shadow-2xl flex flex-col items-center">
+            
+            <!-- School Logo with hidden double-click/tap listener -->
+            <img src='Logo Darma Yudha.png' id='school-logo' alt='Darma Yudha' style='width: 120px; cursor: pointer;' ondblclick="promptTeacherPin()">
+
+            <div class="text-center space-y-1.5 w-full">
+                <h2 class="text-xl font-bold text-white tracking-tight mt-2">Practical Examination</h2>
+                <p class="text-xs text-slate-400">Hydrostatic Pressure Measurement</p>
+                <div id="debug-badge" class="hide mt-2 inline-block bg-blue-600/20 text-blue-400 border border-blue-500/30 px-3 py-1 rounded-full text-xs font-bold animate-pulse">
+                    <i class="fa-solid fa-code"></i> DEBUG MODE ACTIVE
+                </div>
+            </div>
+
+            <form onsubmit="event.preventDefault(); startExperiment();" class="space-y-4 pt-1 w-full">
+                <div>
+                    <label class="block text-xs font-semibold text-slate-300 mb-1">Student Full Name <span class="text-rose-400">*</span></label>
+                    <input type="text" id="student-name" required placeholder="Enter your full name" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2.5 text-xs text-white focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none transition">
+                </div>
+
+                <div>
+                    <label class="block text-xs font-semibold text-slate-300 mb-1">Class / Section <span class="text-rose-400">*</span></label>
+                    <input type="text" id="student-class" required placeholder="e.g. 9A, 9B, 9D..." class="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2.5 text-xs text-white focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none transition">
+                </div>
+
+                <div class="p-3.5 bg-amber-500/10 border border-amber-500/30 rounded-xl text-[11px] text-amber-300/90 space-y-1.5">
+                    <div class="font-bold flex items-center gap-2 text-amber-400 text-xs">
+                        <i class="fa-solid fa-shield-halved"></i> Exam Security Enabled
+                    </div>
+                    <ul class="list-disc list-inside space-y-1 text-slate-300">
+                        <li>The assessment launches in <strong>Fullscreen Mode</strong>.</li>
+                        <li>You have <strong>30 minutes</strong> to complete the lab.</li>
+                        <li><strong>Switching tabs or exiting fullscreen will immediately end and submit the exam.</strong></li>
+                    </ul>
+                </div>
+
+                <button type="submit" class="w-full py-3 bg-blue-600 hover:bg-blue-500 active:bg-blue-700 text-white font-bold text-xs rounded-xl transition shadow-lg shadow-blue-900/30 flex items-center justify-center gap-2">
+                    <i class="fa-solid fa-play"></i> Start Assessment
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <header class="bg-slate-900 border-b border-slate-800 px-5 py-2.5 flex justify-between items-center shrink-0 z-20">
+        <div class="flex items-center space-x-3">
+            <div class="p-2 bg-blue-600/20 text-blue-400 rounded-lg border border-blue-500/30">
+                <i class="fa-solid fa-flask text-sm"></i>
+            </div>
+            <div>
+                <h1 class="text-sm font-bold tracking-tight text-white flex items-center gap-2">
+                    Physics Lab: Hydrostatic Pressure
+                    <span id="badge-student" class="text-[10px] bg-slate-800 text-slate-300 border border-slate-700 px-2 py-0.5 rounded-full font-normal hidden">
+                        <span id="header-student-name" class="font-semibold text-blue-400">---</span>
+                    </span>
+                </h1>
+            </div>
+        </div>
+
+        <div class="flex items-center space-x-4">
+            <div class="flex items-center bg-slate-950 border border-slate-800 px-3.5 py-1.5 rounded-xl text-xs font-mono-custom shadow-inner">
+                <i id="timer-icon" class="fa-regular fa-clock text-amber-400 mr-2"></i>
+                <span id="timer-display" class="font-bold text-amber-400 text-sm">30:00</span>
+            </div>
+
+            <button onclick="requestEndExperiment()" class="px-3.5 py-1.5 bg-rose-600/20 hover:bg-rose-600/30 text-rose-300 border border-rose-500/30 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition">
+                <i class="fa-solid fa-flag-checkered"></i> Submit & Exit
+            </button>
+        </div>
+    </header>
+
+    <main class="flex-1 flex overflow-hidden relative">
+
+        <!-- Left Controls Sidebar -->
+        <aside class="w-72 bg-slate-900/90 border-r border-slate-800 p-3.5 flex flex-col gap-3.5 overflow-y-auto custom-scrollbar shrink-0 z-10">
+            <!-- Fluid Chooser -->
+            <div class="bg-slate-950/60 p-3 rounded-xl border border-slate-800 space-y-2">
+                <label class="text-[11px] font-bold uppercase tracking-wider text-slate-400 flex justify-between items-center">
+                    <span>1. Fluid Selection</span>
+                    <i class="fa-solid fa-droplet text-blue-400"></i>
+                </label>
+                <div class="grid grid-cols-1 gap-1.5" id="liquid-select-container"></div>
+            </div>
+
+            <!-- Apparatus Controls -->
+            <div class="bg-slate-950/60 p-3 rounded-xl border border-slate-800 space-y-2">
+                <label class="text-[11px] font-bold uppercase tracking-wider text-slate-400 flex justify-between items-center">
+                    <span>2. Fill Cylinder</span>
+                    <i class="fa-solid fa-faucet text-indigo-400"></i>
+                </label>
+                
+                <div class="grid grid-cols-2 gap-2">
+                    <button onclick="addLiquid(1)" class="py-2 px-2 bg-blue-600/80 hover:bg-blue-500 rounded-lg text-xs font-semibold text-white transition">+ 1 mL</button>
+                    <button onclick="addLiquid(5)" class="py-2 px-2 bg-blue-600/80 hover:bg-blue-500 rounded-lg text-xs font-semibold text-white transition">+ 5 mL</button>
+                    <button onclick="addLiquid(50)" class="py-2 px-2 bg-blue-600/80 hover:bg-blue-500 rounded-lg text-xs font-semibold text-white transition">+ 50 mL</button>
+                    <button onclick="addLiquid(100)" class="py-2 px-2 bg-blue-600/80 hover:bg-blue-500 rounded-lg text-xs font-semibold text-white transition">+ 100 mL</button>
+                </div>
+                
+                <button onclick="pourLiquidToBeaker()" class="w-full py-2 px-3 mt-2 bg-indigo-600 hover:bg-indigo-500 rounded-lg text-xs font-semibold text-white flex items-center justify-center gap-2 transition shadow">
+                    <i class="fa-solid fa-arrow-right-arrow-left rotate-90"></i> Pour to Beaker
+                </button>
+            </div>
+
+            <!-- Weighing -->
+            <div class="bg-slate-950/60 p-3 rounded-xl border border-slate-800 space-y-2">
+                <label class="text-[11px] font-bold uppercase tracking-wider text-slate-400 flex justify-between items-center">
+                    <span>3. Weighing Station</span>
+                    <i class="fa-solid fa-scale-balanced text-amber-400"></i>
+                </label>
+                <div class="grid grid-cols-2 gap-2 pt-1">
+                    <button onclick="toggleBeakerOnScale()" class="py-1.5 px-2 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 rounded-lg text-[10px] font-medium transition flex flex-col items-center gap-1">
+                        <i class="fa-solid fa-glass-water text-amber-400"></i> Place Beaker
+                    </button>
+                    <button onclick="toggleCylinderOnScale()" class="py-1.5 px-2 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 rounded-lg text-[10px] font-medium transition flex flex-col items-center gap-1">
+                        <i class="fa-solid fa-flask text-blue-400"></i> Place Cylinder
+                    </button>
+                </div>
+
+                <button onclick="tareScale()" class="w-full py-1.5 bg-slate-800 hover:bg-slate-700 text-amber-300 border border-amber-500/30 rounded-lg text-xs font-semibold transition flex items-center justify-center gap-1.5">
+                    <i class="fa-solid fa-power-off text-amber-400"></i> TARE Scale
+                </button>
+
+                <button onclick="emptyAllContainers()" class="w-full py-1.5 mt-2 bg-slate-900 hover:bg-rose-950/40 hover:text-rose-300 border border-slate-800 rounded-lg text-xs font-medium text-slate-400 transition flex items-center justify-center gap-1.5">
+                    <i class="fa-solid fa-trash-can"></i> Empty Glassware
+                </button>
+            </div>
+            
+            <div class="p-3 bg-blue-900/20 border border-blue-500/30 rounded-xl mt-auto">
+                <p class="text-[11px] text-blue-300 italic">
+                    <i class="fa-solid fa-lightbulb text-amber-400 mr-1"></i> Hint: The bottom of the beaker is a perfect circle.
+                </p>
+            </div>
+        </aside>
+
+        <!-- Center Canvas -->
+        <section class="flex-1 relative flex flex-col bg-slate-950 overflow-hidden">
+            <div id="canvas-container" class="w-full h-full relative cursor-grab active:cursor-grabbing">
+                <canvas id="labCanvas" class="w-full h-full block"></canvas>
+            </div>
+        </section>
+
+        <!-- Right Spreadsheet Panel -->
+        <aside class="w-96 bg-slate-900/90 border-l border-slate-800 p-3.5 flex flex-col gap-3 overflow-y-auto custom-scrollbar shrink-0 z-10">
+            <div class="flex items-center justify-between border-b border-slate-800 pb-2.5">
+                <h2 class="text-xs font-bold text-white flex items-center gap-1.5 uppercase tracking-wider">
+                    <i class="fa-solid fa-table text-emerald-400"></i> Observations Log
+                </h2>
+                <button onclick="addTableRow()" class="px-2 py-1 bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-400 border border-emerald-500/30 rounded text-[10px] font-semibold transition">
+                    <i class="fa-solid fa-plus"></i> Add Row
+                </button>
+            </div>
+
+            <p class="text-[11px] text-slate-400 leading-relaxed">
+                Log your measurements. Deduce necessary calculations independently based on the lab objectives.
+            </p>
+
+            <div class="p-2.5 bg-amber-500/10 border border-amber-500/30 rounded-lg text-[11px] text-amber-300/90">
+                <i class="fa-solid fa-gauge-high text-amber-400 mr-1"></i>
+                <strong>Gravitational acceleration:</strong> g = 9.8 m/s²
+            </div>
+
+            <div id="table-rows-container" class="space-y-3 flex-1 overflow-y-auto custom-scrollbar pb-4"></div>
+
+            <div class="mt-auto pt-3 space-y-2 border-t border-slate-800">
+                <button onclick="requestEndExperiment()" class="w-full py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs rounded-xl shadow-lg transition flex items-center justify-center gap-2">
+                    <i class="fa-solid fa-file-export text-sm"></i> Submit Data to Spreadsheet
+                </button>
+                <div id="submit-status" class="text-[10px] text-center text-slate-400 font-mono">
+                    Status: Awaiting Completion
+                </div>
+            </div>
+        </aside>
+    </main>
+
+    <script>
+        // Dialog UI Logic
+        function showDialog(title, message, type = 'alert', onConfirm = null) {
+            const dialog = document.getElementById('custom-dialog');
+            const titleEl = document.getElementById('dialog-title');
+            const messageEl = document.getElementById('dialog-message');
+            const iconEl = document.getElementById('dialog-icon');
+            const inputEl = document.getElementById('dialog-input');
+            const buttonsContainer = document.getElementById('dialog-buttons');
+
+            titleEl.innerText = title;
+            messageEl.innerText = message;
+            buttonsContainer.innerHTML = '';
+            inputEl.classList.add('hide');
+            inputEl.value = '';
+            
+            if (type === 'alert') {
+                iconEl.innerHTML = '<i class="fa-solid fa-circle-exclamation text-amber-500"></i>';
+            } else if (type === 'confirm') {
+                iconEl.innerHTML = '<i class="fa-solid fa-circle-question text-blue-400"></i>';
+            } else if (type === 'error') {
+                iconEl.innerHTML = '<i class="fa-solid fa-shield-halved text-rose-500"></i>';
+            } else if (type === 'prompt') {
+                iconEl.innerHTML = '<i class="fa-solid fa-key text-indigo-400"></i>';
+                inputEl.classList.remove('hide');
+            }
+
+            const closeDialog = () => { dialog.classList.add('hide'); };
+
+            if (type === 'confirm' || type === 'prompt') {
+                const cancelBtn = document.createElement('button');
+                cancelBtn.className = "px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg text-xs font-semibold transition";
+                cancelBtn.innerText = "Cancel";
+                cancelBtn.onclick = closeDialog;
+                
+                const confirmBtn = document.createElement('button');
+                confirmBtn.className = "px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-xs font-semibold transition";
+                confirmBtn.innerText = type === 'prompt' ? "Submit" : "Confirm";
+                confirmBtn.onclick = () => {
+                    closeDialog();
+                    if (onConfirm) {
+                        type === 'prompt' ? onConfirm(inputEl.value) : onConfirm();
+                    }
+                };
+                buttonsContainer.appendChild(cancelBtn);
+                buttonsContainer.appendChild(confirmBtn);
+            } else {
+                const okBtn = document.createElement('button');
+                okBtn.className = "px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-xs font-semibold transition";
+                okBtn.innerText = "OK";
+                okBtn.onclick = () => {
+                    closeDialog();
+                    if (onConfirm) onConfirm();
+                };
+                buttonsContainer.appendChild(okBtn);
+            }
+
+            dialog.classList.remove('hide');
+            if (type === 'prompt') inputEl.focus();
+        }
+
+        // Hidden Teacher Logic
+        let touchClicks = 0;
+        let touchTimer = null;
+        document.getElementById('school-logo').addEventListener('touchstart', (e) => {
+            touchClicks++;
+            if (touchClicks === 2) {
+                promptTeacherPin();
+                touchClicks = 0;
+                clearTimeout(touchTimer);
+            } else {
+                touchTimer = setTimeout(() => { touchClicks = 0; }, 400);
+            }
+        });
+
+        function promptTeacherPin() {
+            showDialog("Teacher Mode Authorization", "Enter debugging PIN:", "prompt", (pin) => {
+                if (pin === "1234") {
+                    isTeacherMode = true;
+                    document.getElementById('debug-badge').classList.remove('hide');
+                    showDialog("Authorized", "Debug Mode Activated.\nSecurity locks and timers are disabled.", "alert");
+                } else {
+                    showDialog("Unauthorized", "Incorrect PIN.", "error");
+                }
+            });
+        }
+
+        const LIQUIDS = {
+            water: { name: "Water", density: 1.00, color: "rgba(59, 130, 246, 0.65)" },
+            saltwater: { name: "Saltwater", density: 1.08, color: "rgba(20, 184, 166, 0.7)" },
+            oil: { name: "Oil", density: 0.92, color: "rgba(234, 179, 8, 0.7)" },
+            glycerin: { name: "Glycerin", density: 1.26, color: "rgba(168, 85, 247, 0.7)" },
+            liquidX: { name: "Unknown", density: 1.15, color: "rgba(244, 63, 94, 0.7)" }
+        };
+
+        const BEAKER_SPEC = { innerDiameterCm: 8.00, emptyMassG: 142.50, maxVolMl: 700 };
+        const CYLINDER_SPEC = { emptyMassG: 95.0, capacityMl: 100 };
+
+        let studentDetails = { name: "", class: "" };
+        let timerSeconds = 30 * 60;
+        let timerInterval = null;
+        let isExamActive = false;
+        let isTeacherMode = false;
+        let hasSubmitted = false;
+
+        // ===============================
+        // GOOGLE SHEETS CONNECTION
+        // ===============================
+        // Paste your deployed Google Apps Script Web App URL here.
+        const GOOGLE_SCRIPT_URL =
+            'PASTE_YOUR_GOOGLE_APPS_SCRIPT_WEB_APP_URL_HERE';
+
+        // This must exactly match SECRET_TOKEN in your Google Apps Script.
+        const GOOGLE_SHEET_TOKEN =
+            'CHANGE_THIS_TOKEN';
+
+        let currentLiquidKey = "water";
+        let cylinderVolumeMl = 0;
+        let beakerVolumeMl = 0;
+        let tareOffsetG = 0;
+        let rowCounter = 0;
+
+        let scalePos = { x: 0, y: 0, width: 220, height: 60 };
+        
+        let draggableObjects = {
+            beaker: { x: 260, y: 340, width: 140, height: 160, onScale: false },
+            cylinder: { x: 120, y: 320, width: 48, height: 200, onScale: false },
+            ruler: { x: 400, y: 150, width: 350, height: 40, angle: 0 } // Metric ruler visual
+        };
+
+        let pourAnim = { active: false, progress: 0, amount: 0, source: 0 };
+        let activeDragObj = null;
+        let dragOffset = { x: 0, y: 0 };
+
+        const canvas = document.getElementById('labCanvas');
+        const ctx = canvas.getContext('2d');
+
+        window.addEventListener('load', () => {
+            initLiquidButtons();
+            addTableRow(); 
+            resizeCanvas();
+            window.addEventListener('resize', resizeCanvas);
+            setupCanvasInteraction();
+            requestAnimationFrame(renderLoop);
+        });
+
+        function getScalePanRect() {
+            // The weighing pan is the raised platform drawn immediately above
+            // the balance body. Glassware must overlap this area to be accepted.
+            const panTop = scalePos.y - 8;
+            const panHeight = 16;
+            return {
+                x: scalePos.x - 8,
+                y: panTop,
+                width: scalePos.width + 16,
+                height: panHeight
+            };
+        }
+
+        function attachToScale(obj) {
+            obj.onScale = true;
+            // Seat the bottom of the glassware exactly on the upper surface of
+            // the balance pan, and center it horizontally.
+            const pan = getScalePanRect();
+            obj.x = pan.x + pan.width / 2 - obj.width / 2;
+            obj.y = pan.y - obj.height;
+        }
+
+        function detachFromScale(obj) {
+            obj.onScale = false;
+        }
+
+        function isObjectOverScalePan(obj) {
+            const pan = getScalePanRect();
+            const overlapX = Math.max(0, Math.min(obj.x + obj.width, pan.x + pan.width) - Math.max(obj.x, pan.x));
+            const overlapY = Math.max(0, Math.min(obj.y + obj.height, pan.y + pan.height) - Math.max(obj.y, pan.y));
+            const overlapArea = overlapX * overlapY;
+            const objectArea = obj.width * obj.height;
+            const objectCenterX = obj.x + obj.width / 2;
+            const objectCenterY = obj.y + obj.height / 2;
+            const centerOverPan = objectCenterX >= pan.x && objectCenterX <= pan.x + pan.width;
+            // Accept a drop when the object's bottom reaches the pan and a
+            // meaningful portion of its footprint is over the pan.
+            return (overlapArea >= objectArea * 0.02 || centerOverPan) &&
+                   obj.y + obj.height >= pan.y - 20 &&
+                   obj.y <= pan.y + pan.height + 20;
+        }
+
+        function resizeCanvas() {
+            const container = document.getElementById('canvas-container');
+            canvas.width = container.clientWidth;
+            canvas.height = container.clientHeight;
+            
+            const benchY = canvas.height - 120;
+            scalePos.x = canvas.width - 260;
+            scalePos.y = benchY - scalePos.height;
+
+            const reposition = (obj) => {
+                if (obj.onScale) {
+                    attachToScale(obj);
+                } else {
+                    // Keep unattached glassware resting on the laboratory bench.
+                    obj.y = benchY - obj.height;
+                    if (obj.x + obj.width > canvas.width) obj.x = canvas.width - obj.width - 20;
+                    if (obj.x < 20) obj.x = 20;
+                }
+            };
+            reposition(draggableObjects.beaker);
+            reposition(draggableObjects.cylinder);
+            
+            // Keep ruler on screen
+            if (draggableObjects.ruler.x > canvas.width) draggableObjects.ruler.x = canvas.width - 200;
+            if (draggableObjects.ruler.x < 10) draggableObjects.ruler.x = 10;
+        }
+
+        function initLiquidButtons() {
+            const container = document.getElementById('liquid-select-container');
+            container.innerHTML = '';
+            Object.keys(LIQUIDS).forEach(key => {
+                const liq = LIQUIDS[key];
+                const btn = document.createElement('button');
+                btn.className = `p-2 rounded-lg border text-left text-xs font-medium transition flex items-center gap-2 ${
+                    key === currentLiquidKey ? 'bg-blue-600/20 border-blue-500 text-white' : 'bg-slate-900 border-slate-800 text-slate-300 hover:bg-slate-800'
+                }`;
+                btn.onclick = () => { currentLiquidKey = key; initLiquidButtons(); };
+                btn.innerHTML = `<span class="w-3 h-3 rounded-full" style="background-color: ${liq.color}"></span> ${liq.name}`;
+                container.appendChild(btn);
+            });
+        }
+
+        function addLiquid(amount) {
+            if (cylinderVolumeMl + amount <= CYLINDER_SPEC.capacityMl) {
+                cylinderVolumeMl += amount;
+            } else {
+                cylinderVolumeMl = CYLINDER_SPEC.capacityMl;
+            }
+        }
+
+        function emptyAllContainers() { 
+            cylinderVolumeMl = 0; 
+            beakerVolumeMl = 0; 
+            pourAnim.active = false;
+        }
+
+        function pourLiquidToBeaker() {
+            if (cylinderVolumeMl > 0 && beakerVolumeMl + cylinderVolumeMl <= BEAKER_SPEC.maxVolMl) {
+                pourAnim = { active: true, progress: 0, amount: cylinderVolumeMl, source: cylinderVolumeMl };
+            }
+        }
+
+        function toggleBeakerOnScale() {
+            if (draggableObjects.beaker.onScale) {
+                detachFromScale(draggableObjects.beaker);
+            } else {
+                draggableObjects.cylinder.onScale = false;
+                attachToScale(draggableObjects.beaker);
+            }
+            resizeCanvas();
+        }
+
+        function toggleCylinderOnScale() {
+            if (draggableObjects.cylinder.onScale) {
+                detachFromScale(draggableObjects.cylinder);
+            } else {
+                draggableObjects.beaker.onScale = false;
+                attachToScale(draggableObjects.cylinder);
+            }
+            resizeCanvas();
+        }
+
+        function getRawScaleWeight() {
+            let mass = 0;
+            const density = LIQUIDS[currentLiquidKey].density;
+            if (draggableObjects.beaker.onScale) mass += BEAKER_SPEC.emptyMassG + (beakerVolumeMl * density);
+            if (draggableObjects.cylinder.onScale) mass += CYLINDER_SPEC.emptyMassG + (cylinderVolumeMl * density);
+            return mass;
+        }
+
+        function tareScale() { tareOffsetG = getRawScaleWeight(); }
+
+        function setupCanvasInteraction() {
+            const getPos = (e) => {
+                const rect = canvas.getBoundingClientRect();
+                const evt = e.touches ? e.touches[0] : e;
+                return { x: evt.clientX - rect.left, y: evt.clientY - rect.top };
+            };
+
+            const start = (e) => {
+                if(e.touches) e.preventDefault(); // Prevent scrolling on mobile
+                const pos = getPos(e);
+                const r = draggableObjects.ruler;
+                
+                // Expanding hit area for ruler due to rotation potential
+                const rulerHitMargin = 50;
+                if (pos.x >= r.x-rulerHitMargin && pos.x <= r.x+r.width+rulerHitMargin && pos.y >= r.y-r.height-rulerHitMargin && pos.y <= r.y+r.height+rulerHitMargin) {
+                    activeDragObj = r; dragOffset = {x: pos.x - r.x, y: pos.y - r.y}; return;
+                }
+                const hitTest = (obj) => pos.x >= obj.x && pos.x <= obj.x + obj.width && pos.y >= obj.y && pos.y <= obj.y + obj.height;
+                if (hitTest(draggableObjects.beaker)) {
+                    activeDragObj = draggableObjects.beaker;
+                    detachFromScale(draggableObjects.beaker);
+                } else if (hitTest(draggableObjects.cylinder)) {
+                    activeDragObj = draggableObjects.cylinder;
+                    detachFromScale(draggableObjects.cylinder);
+                }
+                if (activeDragObj) dragOffset = {x: pos.x - activeDragObj.x, y: pos.y - activeDragObj.y};
+            };
+
+            const move = (e) => {
+                if (activeDragObj) {
+                    if(e.touches) e.preventDefault();
+                    const pos = getPos(e);
+                    activeDragObj.x = pos.x - dragOffset.x;
+                    activeDragObj.y = pos.y - dragOffset.y;
+                }
+            };
+
+            const end = () => {
+                if (!activeDragObj) return;
+                if (activeDragObj !== draggableObjects.ruler) {
+                    // A glassware item is considered on the balance only when it
+                    // actually reaches/overlaps the pan. Once accepted, it snaps
+                    // into a fixed seated position and the scale immediately uses
+                    // its mass in getRawScaleWeight().
+                    if (isObjectOverScalePan(activeDragObj)) {
+                        const other = activeDragObj === draggableObjects.beaker
+                            ? draggableObjects.cylinder
+                            : draggableObjects.beaker;
+                        other.onScale = false;
+                        attachToScale(activeDragObj);
+                    } else {
+                        detachFromScale(activeDragObj);
+                    }
+                    resizeCanvas();
+                }
+                activeDragObj = null;
+            };
+
+            canvas.addEventListener('mousedown', start); canvas.addEventListener('mousemove', move); window.addEventListener('mouseup', end);
+            canvas.addEventListener('touchstart', start, {passive: false}); canvas.addEventListener('touchmove', move, {passive: false}); window.addEventListener('touchend', end);
+            
+            // Double click to rotate ruler
+            canvas.addEventListener('dblclick', (e) => {
+                const pos = getPos(e);
+                const r = draggableObjects.ruler;
+                if (pos.x >= r.x-50 && pos.x <= r.x+r.width+50 && pos.y >= r.y-50 && pos.y <= r.y+r.height+50) {
+                    r.angle = r.angle === 0 ? -Math.PI / 2 : 0; // Toggle horizontal / vertical
+                }
+            });
+            // Custom touch double tap for ruler
+            let lastTap = 0;
+            canvas.addEventListener('touchend', (e) => {
+                const currentTime = new Date().getTime();
+                const tapLength = currentTime - lastTap;
+                if (tapLength < 500 && tapLength > 0) {
+                    const r = draggableObjects.ruler;
+                    r.angle = r.angle === 0 ? -Math.PI / 2 : 0;
+                    e.preventDefault();
+                }
+                lastTap = currentTime;
+            });
+        }
+
+        function renderLoop() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            const benchY = canvas.height - 120;
+            
+            // Draw Bench
+            ctx.fillStyle = '#1e293b'; ctx.fillRect(0, benchY, canvas.width, 120);
+            ctx.fillStyle = '#334155'; ctx.fillRect(0, benchY, canvas.width, 10);
+            ctx.fillStyle = '#0f172a'; ctx.fillRect(0, benchY+10, canvas.width, 2);
+
+            // Draw Scale
+            ctx.save();
+            ctx.translate(scalePos.x, scalePos.y);
+            // Scale Body
+            ctx.fillStyle = '#cbd5e1'; ctx.beginPath(); ctx.roundRect(0, 0, scalePos.width, scalePos.height, 8); ctx.fill();
+            // Clearly defined balance pan / weighing surface.
+            ctx.fillStyle = '#94a3b8';
+            ctx.beginPath();
+            ctx.roundRect(-8, -8, scalePos.width + 16, 16, 5);
+            ctx.fill();
+            ctx.strokeStyle = '#64748b';
+            ctx.lineWidth = 1.5;
+            ctx.stroke();
+            ctx.fillStyle = 'rgba(255,255,255,0.10)';
+            ctx.fillRect(0, -4, scalePos.width, 4);
+            // Display Screen
+            ctx.fillStyle = '#020617'; ctx.beginPath(); ctx.roundRect(20, 20, scalePos.width - 40, 30, 4); ctx.fill();
+            
+            const dispValue = Math.max(0, getRawScaleWeight() - tareOffsetG).toFixed(2);
+            ctx.fillStyle = '#10b981'; ctx.font = '700 18px "JetBrains Mono"'; ctx.textAlign = 'right';
+            ctx.fillText(`${dispValue} g`, scalePos.width - 25, 42);
+            if (tareOffsetG > 0) { ctx.fillStyle = '#f59e0b'; ctx.font = '10px sans-serif'; ctx.fillText('TARE', scalePos.width - 25, 30); }
+            ctx.restore();
+
+            // Pouring Animation
+            if (pourAnim.active) {
+                pourAnim.progress += 0.02;
+                if (pourAnim.progress >= 1) pourAnim.active = false;
+                const poured = pourAnim.amount * pourAnim.progress;
+                cylinderVolumeMl = Math.max(0, pourAnim.source - poured);
+                beakerVolumeMl += pourAnim.amount * 0.02;
+
+                ctx.strokeStyle = LIQUIDS[currentLiquidKey].color; ctx.lineWidth = 6;
+                ctx.beginPath(); ctx.moveTo(draggableObjects.cylinder.x + draggableObjects.cylinder.width/2, draggableObjects.cylinder.y);
+                ctx.lineTo(draggableObjects.beaker.x + draggableObjects.beaker.width/2, draggableObjects.beaker.y + draggableObjects.beaker.height); ctx.stroke();
+            }
+
+            // Glassware Drawing Helper
+            const drawGlass = (obj, vol, cap, innerR) => {
+                ctx.save();
+                // Liquid fill
+                if (vol > 0) {
+                    const fillH = obj === draggableObjects.beaker ? (vol / BEAKER_SPEC.maxVolMl) * (obj.height - 20) : (vol / cap) * (obj.height - 20);
+                    ctx.fillStyle = LIQUIDS[currentLiquidKey].color;
+                    ctx.fillRect(obj.x + 4, obj.y + obj.height - 4 - fillH, obj.width - 8, fillH);
+                    
+                    // Meniscus
+                    ctx.fillStyle = 'rgba(255,255,255,0.2)';
+                    ctx.beginPath(); ctx.ellipse(obj.x + obj.width/2, obj.y + obj.height - 4 - fillH, (obj.width-8)/2, 5, 0, 0, Math.PI*2); ctx.fill();
+                }
+                
+                // Glass Walls
+                ctx.strokeStyle = 'rgba(255,255,255,0.6)'; ctx.lineWidth = 4;
+                ctx.beginPath();
+                ctx.moveTo(obj.x, obj.y);
+                ctx.lineTo(obj.x, obj.y + obj.height - 5);
+                ctx.quadraticCurveTo(obj.x, obj.y + obj.height, obj.x + 5, obj.y + obj.height);
+                ctx.lineTo(obj.x + obj.width - 5, obj.y + obj.height);
+                ctx.quadraticCurveTo(obj.x + obj.width, obj.y + obj.height, obj.x + obj.width, obj.y + obj.height - 5);
+                ctx.lineTo(obj.x + obj.width, obj.y);
+                ctx.stroke();
+
+                // Markers
+                ctx.strokeStyle = 'rgba(255,255,255,0.4)'; ctx.lineWidth = 1;
+                for(let i=1; i<5; i++) {
+                    let markY = obj.y + obj.height - 4 - (i/5)*(obj.height-20);
+                    ctx.beginPath(); ctx.moveTo(obj.x, markY); ctx.lineTo(obj.x + 10, markY); ctx.stroke();
+                }
+
+                ctx.restore();
+            };
+
+            drawGlass(draggableObjects.beaker, beakerVolumeMl, 0, BEAKER_SPEC.innerDiameterCm/2);
+            drawGlass(draggableObjects.cylinder, cylinderVolumeMl, CYLINDER_SPEC.capacityMl, 0);
+
+            // Draw Ruler (Realistic Metric)
+            ctx.save();
+            const r = draggableObjects.ruler;
+            ctx.translate(r.x, r.y); ctx.rotate(r.angle);
+            
+            // Ruler Body
+            ctx.fillStyle = 'rgba(250, 250, 250, 0.85)'; // Slightly transparent plastic look
+            ctx.beginPath(); ctx.roundRect(0, 0, r.width, r.height, 4); ctx.fill();
+            ctx.strokeStyle = '#94a3b8'; ctx.lineWidth = 1; ctx.stroke();
+
+            ctx.fillStyle = '#0f172a'; ctx.font = '10px "Inter", sans-serif'; ctx.textAlign = 'center';
+            ctx.fillText("cm", 15, r.height/2 + 3);
+
+            // Ticks (Representing roughly 30cm)
+            const cmWidth = (r.width - 40) / 30; // 30 units across the ruler
+            for (let i = 0; i <= 30; i++) {
+                const x = 30 + (i * cmWidth);
+                if (i % 5 === 0) {
+                    ctx.fillRect(x, 0, 1.5, 12);
+                    ctx.fillText(i, x, 22);
+                } else {
+                    ctx.fillRect(x, 0, 1, 6);
+                }
+            }
+            ctx.restore();
+
+            // Hover indicator for rotation hint
+            if (activeDragObj === draggableObjects.ruler) {
+                ctx.fillStyle = 'rgba(255,255,255,0.7)';
+                ctx.font = '12px sans-serif';
+                ctx.fillText("Double-tap ruler to rotate", canvas.width/2 - 70, 30);
+            }
+
+            requestAnimationFrame(renderLoop);
+        }
+
+        function startExperiment() {
+            const name = document.getElementById('student-name').value.trim();
+            const cls = document.getElementById('student-class').value.trim();
+            if (!name || !cls) return;
+
+            studentDetails = { name, class: cls };
+            document.getElementById('header-student-name').innerText = `${name} (${cls})`;
+            document.getElementById('badge-student').classList.remove('hidden');
+            document.getElementById('start-modal').classList.add('hidden');
+
+            isExamActive = true;
+            hasSubmitted = false;
+
+            if (isTeacherMode) {
+                document.getElementById('timer-display').innerText = "DEBUG";
+                document.getElementById('timer-icon').className = "fa-solid fa-code text-blue-400 mr-2";
+            } else {
+                if (document.documentElement.requestFullscreen) {
+                    document.documentElement.requestFullscreen().catch(err => {
+                        showDialog("Fullscreen Error", "Browser prevented fullscreen. The assessment requires it to run securely.", "error");
+                    });
+                }
+                startTimer();
+                setupSecurityListeners(); // Only attach security after starting
+            }
+        }
+
+        function startTimer() {
+            if (timerInterval) clearInterval(timerInterval);
+            timerInterval = setInterval(() => {
+                timerSeconds--;
+                const m = String(Math.floor(timerSeconds / 60)).padStart(2, '0');
+                const s = String(timerSeconds % 60).padStart(2, '0');
+                document.getElementById('timer-display').innerText = `${m}:${s}`;
+                if (timerSeconds <= 0) forceEndExperiment("Time Expired");
+            }, 1000);
+        }
+
+        function setupSecurityListeners() {
+            // Fullscreen check
+            document.addEventListener('fullscreenchange', () => {
+                if (!document.fullscreenElement && isExamActive && !isTeacherMode && !hasSubmitted) {
+                    forceEndExperiment("Fullscreen Exited - Security Violation");
+                }
+            });
+
+            // Focus loss check (Tab switching)
+            window.addEventListener('blur', () => {
+                if (isExamActive && !isTeacherMode && !hasSubmitted) {
+                    forceEndExperiment("Focus Lost (Tab Switched) - Security Violation");
+                }
+            });
+        }
+
+        function requestEndExperiment() {
+            if (!isExamActive) return;
+            showDialog("Confirm Submission", "Are you sure you want to end the exam and submit your data?", "confirm", () => {
+                forceEndExperiment("Student Submitted manually.");
+            });
+        }
+
+        async function submitToGoogleSheet(reason = "Student Submitted manually.") {
+            if (!GOOGLE_SCRIPT_URL ||
+                GOOGLE_SCRIPT_URL.includes('PASTE_YOUR')) {
+
+                console.warn('Google Sheets connection is not configured.');
+                return false;
+            }
+
+            const rows = [];
+
+            document
+                .querySelectorAll('#table-rows-container > div')
+                .forEach((row) => {
+                    const inputs = row.querySelectorAll('input');
+
+                    rows.push({
+                        fluid: inputs[0]?.value || '',
+                        mass: inputs[1]?.value || '',
+                        diameter: inputs[2]?.value || '',
+                        pressure: inputs[3]?.value || ''
+                    });
+                });
+
+            const timeUsed = isTeacherMode
+                ? "DEBUG"
+                : `${Math.floor((1800 - timerSeconds) / 60)}m ` +
+                  `${(1800 - timerSeconds) % 60}s`;
+
+            const payload = {
+                studentName: studentDetails.name,
+                studentClass: studentDetails.class,
+                gravity: 9.8,
+                timeUsed: timeUsed,
+                reason: reason,
+                trials: rows
+            };
+
+            const formData = new URLSearchParams();
+            formData.append('token', GOOGLE_SHEET_TOKEN);
+            formData.append('payload', JSON.stringify(payload));
+
+            try {
+                // no-cors allows the standalone HTML page to submit the request.
+                await fetch(GOOGLE_SCRIPT_URL, {
+                    method: 'POST',
+                    mode: 'no-cors',
+                    headers: {
+                        'Content-Type':
+                            'application/x-www-form-urlencoded;charset=UTF-8'
+                    },
+                    body: formData.toString()
+                });
+
+                document.getElementById('submit-status').innerText =
+                    'Status: Data sent to Google Sheets.';
+                document.getElementById('submit-status')
+                    .classList.remove('text-slate-400');
+                document.getElementById('submit-status')
+                    .classList.add('text-emerald-400');
+
+                return true;
+
+            } catch (error) {
+                console.error('Google Sheets submission failed:', error);
+
+                document.getElementById('submit-status').innerText =
+                    'Status: Google Sheets submission failed.';
+                document.getElementById('submit-status')
+                    .classList.remove('text-slate-400');
+                document.getElementById('submit-status')
+                    .classList.add('text-rose-400');
+
+                return false;
+            }
+        }
+
+        function forceEndExperiment(reason) {
+            if (hasSubmitted || !isExamActive) return;
+            hasSubmitted = true;
+            isExamActive = false;
+            clearInterval(timerInterval);
+            
+            showDialog("Exam Completed", `Your lab data is being submitted.\n\nReason: ${reason}`, "alert", async () => {
+                // Send the results to Google Sheets.
+                await submitToGoogleSheet(reason);
+
+                // Keep the CSV export as a backup.
+                exportToCSV();
+
+                if (document.fullscreenElement && document.exitFullscreen) {
+                    document.exitFullscreen().catch(()=>{});
+                }
+            });
+        }
+
+        function addTableRow() {
+            rowCounter++;
+            const container = document.getElementById('table-rows-container');
+            const rowDiv = document.createElement('div');
+            rowDiv.id = `row-${rowCounter}`;
+            rowDiv.className = "bg-slate-950/60 p-2.5 rounded-lg border border-slate-700 space-y-2 relative text-[11px]";
+            rowDiv.innerHTML = `
+                <div class="flex justify-between font-bold text-slate-300 mb-1">
+                    <span><i class="fa-solid fa-list-ol mr-1 text-emerald-500"></i> Measurement #${rowCounter}</span>
+                    <button onclick="document.getElementById('row-${rowCounter}').remove()" class="text-rose-500 hover:text-rose-400 px-1"><i class="fa-solid fa-xmark"></i></button>
+                </div>
+                <div class="grid grid-cols-2 gap-2">
+                    <input type="text" class="bg-slate-900 border border-slate-600 p-1.5 text-white rounded outline-none focus:border-emerald-500 transition" placeholder="Fluid Used">
+                    <input type="number" class="bg-slate-900 border border-slate-600 p-1.5 text-white rounded outline-none focus:border-emerald-500 transition" placeholder="Mass (g)">
+                    <input type="number" class="bg-slate-900 border border-slate-600 p-1.5 text-white rounded outline-none focus:border-emerald-500 transition col-span-2" placeholder="Diameter (cm)">
+                    <input type="number" class="bg-slate-900 border border-slate-600 p-1.5 text-white rounded outline-none focus:border-emerald-500 transition col-span-2" placeholder="Pressure Calculated (Pa)">
+                </div>
+            `;
+            container.appendChild(rowDiv);
+            container.scrollTop = container.scrollHeight;
+        }
+
+        function exportToCSV() {
+            let t = isTeacherMode ? "DEBUG" : `${Math.floor((1800 - timerSeconds)/60)}m ${(1800 - timerSeconds)%60}s`;
+            let csv = `Student Name,${studentDetails.name}\nClass/Section,${studentDetails.class}\nTime Remaining,${t}\nGravitational acceleration (m/s²),9.8\n\n`;
+            csv += `Trial,Fluid Used,Mass(g),Diameter(cm),Pressure Calculated(Pa)\n`;
+            
+            document.querySelectorAll('#table-rows-container > div').forEach((row, i) => {
+                const vals = Array.from(row.querySelectorAll('input')).map(input => `"${input.value || ""}"`);
+                csv += `${i+1},${vals.join(',')}\n`;
+            });
+
+            const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement("a");
+            const url = URL.createObjectURL(blob);
+            link.setAttribute("href", url);
+            link.setAttribute("download", `Physics_Lab_${studentDetails.name.replace(/\s+/g, '_')}_${studentDetails.class.replace(/\s+/g, '_')}.csv`);
+            link.style.visibility = 'hidden';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+    </script>
+</body>
+</html>
